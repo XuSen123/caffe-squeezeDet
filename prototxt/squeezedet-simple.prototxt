@@ -1,0 +1,70 @@
+name: "SqueezeDet"
+
+input: "data"
+input_shape {
+    dim: 1
+    dim: 3
+    dim: 384
+    dim: 1248
+}
+
+input: "conv1_shadow"
+input_shape {
+	dim: 1
+	dim: 64
+	dim: 192
+	dim: 624
+}
+
+layer {
+    name: "conv1"
+    type: "Convolution"
+    bottom: "data"
+    top: "conv1"
+    param {
+        lr_mult: 0.1
+        decay_mult: 0.1 
+    }
+    convolution_param {
+        num_output: 64
+		weight_filler {
+            type: "xavier"    
+        }
+		pad: 2
+		kernel_size: 3
+        stride: 2  
+    }
+}
+
+layer {
+	name: "conv1_crop"
+	type: "Crop"
+	bottom: "conv1"
+	bottom: "conv1_shadow"
+	top: "conv1_crop"
+	crop_param {
+		axis: 1
+		offset: 0
+		offset: 1
+		offset: 1
+	}
+}
+
+layer {
+    name: "con1_relu"
+    type: "ReLU"
+    bottom: "conv1_crop"
+    top: "conv1_relu"
+}
+
+layer {
+    name: "pool1"
+    type: "Pooling"
+    bottom: "conv1_relu"
+    top: "pool1"
+    pooling_param {
+        pool: MAX
+        kernel_size: 3
+        stride: 2  
+    }
+}

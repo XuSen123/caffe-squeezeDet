@@ -1,0 +1,996 @@
+name: "SqueezeDet"
+
+input: "data"
+input_shape {
+    dim: 1
+    dim: 3
+    dim: 384
+    dim: 1248
+}
+
+input: "conv1_shadow"
+input_shape {
+	dim: 1
+	dim: 64
+	dim: 192
+	dim: 624
+}
+
+layer {
+    name: "conv1"
+    type: "Convolution"
+    bottom: "data"
+    top: "conv1"
+    param {
+        lr_mult: 0.1
+        decay_mult: 0.1 
+    }
+    convolution_param {
+        num_output: 64
+		weight_filler {
+            type: "xavier"    
+        }
+		pad: 2
+		kernel_size: 3
+        stride: 2  
+    }
+}
+
+layer {
+	name: "conv1_crop"
+	type: "Crop"
+	bottom: "conv1"
+	bottom: "conv1_shadow"
+	top: "conv1_crop"
+	crop_param {
+		axis: 1
+		offset: 0
+		offset: 1
+		offset: 1
+	}
+}
+
+layer {
+    name: "con1_relu"
+    type: "ReLU"
+    bottom: "conv1_crop"
+    top: "conv1_relu"
+}
+
+layer {
+    name: "pool1"
+    type: "Pooling"
+    bottom: "conv1_relu"
+    top: "pool1"
+    pooling_param {
+        pool: MAX
+        kernel_size: 3
+        stride: 2  
+    }
+}
+
+# ------- Fire2 Block ------- #
+# (B x C x 96 x 312)
+layer {
+    name: "fire2/squeeze1x1"
+    type: "Convolution"
+    bottom: "pool1"
+    top: "fire2/squeeze1x1"
+    param {
+        lr_mult: 0.1
+        decay_mult: 0.1  
+    }
+    convolution_param {
+        num_output: 16
+        weight_filler {
+            type: "xavier"    
+        }
+        kernel_size: 1
+        stride: 1  
+    }
+}
+
+layer {
+    name: "fire2/squeeze1x1_relu"
+    type: "ReLU"
+    bottom: "fire2/squeeze1x1"
+    top: "fire2/squeeze1x1"
+}
+
+layer {
+    name: "fire2/expand1x1"
+    type: "Convolution"
+    bottom: "fire2/squeeze1x1"
+    top: "fire2/expand1x1"
+    param {
+        lr_mult: 0.1
+        decay_mult: 0.1  
+    }
+    convolution_param {
+        num_output: 64
+        weight_filler {
+            type: "xavier"    
+        }
+        kernel_size: 1
+        stride: 1  
+    }
+}
+
+layer {
+    name: "fire2/expand1x1_relu"
+    type: "ReLU"
+    bottom: "fire2/expand1x1"
+    top: "fire2/expand1x1"
+}
+
+layer {
+    name: "fire2/expand3x3"
+    type: "Convolution"
+    bottom: "fire2/squeeze1x1"
+    top: "fire2/expand3x3"
+    convolution_param {
+        num_output: 64
+        weight_filler {
+            type: "xavier"    
+        } 
+		pad: 1
+		kernel_size: 3
+        stride: 1
+    }
+}
+
+layer {
+    name: "fire2/expand3x3_relu"
+    type: "ReLU"
+    bottom: "fire2/expand3x3"
+    top: "fire2/expand3x3"
+}
+
+layer {
+    name: "fire2/concat"
+    type: "Concat"
+    bottom: "fire2/expand1x1"
+    bottom: "fire2/expand3x3"
+    top: "fire2/concat"
+}
+
+# ------- Fire3 Block ------- #
+layer {
+    name: "fire3/squeeze1x1"
+    type: "Convolution"
+    bottom: "fire2/concat"
+    top: "fire3/squeeze1x1"
+    convolution_param {
+        num_output: 16
+        weight_filler {
+            type: "xavier"  
+        }
+        kernel_size: 1
+        stride: 1  
+    }
+}
+
+layer {
+    name: "fire3/squeeze1x1_relu"
+    type: "ReLU"
+    bottom: "fire3/squeeze1x1"
+    top: "fire3/squeeze1x1"
+}
+
+layer {
+    name: "fire3/expand1x1"
+    type: "Convolution"
+    bottom: "fire3/squeeze1x1"
+    top: "fire3/expand1x1" 
+    convolution_param {
+        num_output: 64
+        weight_filler {
+            type: "xavier"   
+        }
+        kernel_size: 1
+        stride: 1 
+    }
+}
+
+layer {
+    name: "fire3/expand1x1_relu"
+    type: "ReLU"
+    bottom: "fire3/expand1x1"
+    top: "fire3/expand1x1"
+}
+
+layer {
+    name: "fire3/expand3x3"
+    type: "Convolution"
+    bottom: "fire3/squeeze1x1"
+    top: "fire3/expand3x3"
+    convolution_param {
+        num_output: 64
+        weight_filler {
+            type: "xavier"    
+        }
+		pad: 1				
+        kernel_size: 3
+        stride: 1  
+    }
+}
+
+layer {
+    name: "fire3/expand3x3_relu"
+    type: "ReLU"
+    bottom: "fire3/expand3x3"
+    top: "fire3/expand3x3"
+}
+
+layer {
+    name: "fire3/concat"
+    type: "Concat"
+    bottom: "fire3/expand1x1"
+    bottom: "fire3/expand3x3"
+    top: "fire3/concat"
+}
+
+layer {
+    name: "pool3"
+    type: "Pooling"
+    bottom: "fire3/concat"
+    top: "pool3"
+    pooling_param {
+        pool: MAX
+        kernel_size: 3
+        stride: 2
+    }
+}
+
+# ------- Fire4 Block ------- #
+# ------- B x C x 64 x 312 --------#
+layer {
+    name: "fire4/squeeze1x1"
+    type: "Convolution"
+    bottom: "pool3"
+    top: "fire4/squeeze1x1" 
+    convolution_param {
+        num_output: 32
+        weight_filler {
+            type: "xavier"    
+        }
+        kernel_size: 1
+        stride: 1  
+    }
+}
+
+layer {
+    name: "fire4/squeeze1x1_relu"
+    type: "ReLU"
+    bottom: "fire4/squeeze1x1"
+    top: "fire4/squeeze1x1"
+}
+
+layer {
+    name: "fire4/expand1x1"
+    type: "Convolution"
+    bottom: "fire4/squeeze1x1"
+    top: "fire4/expand1x1"
+    convolution_param {
+        num_output: 128
+        weight_filler {
+            type: "xavier"    
+        }
+        kernel_size: 1
+        stride: 1  
+    }
+}
+
+layer {
+    name: "fire4/expand1x1_relu"
+    type: "ReLU"
+    bottom: "fire4/expand1x1"
+    top: "fire4/expand1x1"
+}
+
+layer {
+    name: "fire4/expand3x3"
+    type: "Convolution"
+    bottom: "fire4/squeeze1x1"
+    top: "fire4/expand3x3"
+    param {
+        lr_mult: 0.1
+        decay_mult: 0.1  
+    }
+    convolution_param {
+        num_output: 128
+        weight_filler {
+            type: "xavier"    
+        }
+		pad: 1
+		kernel_size: 3
+        stride: 1  
+    }
+}
+
+layer {
+    name: "fire4/expand3x3_relu"
+    type: "ReLU"
+    bottom: "fire4/expand3x3"
+    top: "fire4/expand3x3"
+}
+
+layer {
+    name: "fire4/concat"
+    type: "Concat"
+    bottom: "fire4/expand1x1"
+    bottom: "fire4/expand3x3"
+    top: "fire4/concat"
+}
+
+# ------- Fire5 Block ------- #
+layer {
+    name: "fire5/squeeze1x1"
+    type: "Convolution"
+    bottom: "fire4/concat"
+    top: "fire5/squeeze1x1"
+    param {
+        lr_mult: 0.1
+        decay_mult: 0.1 
+    }
+    convolution_param {
+        num_output: 32
+        weight_filler {
+            type: "xavier"   
+        }
+        kernel_size: 1
+        stride: 1
+    }
+}
+
+layer {
+    name: "fire5/squeeze1x1_relu"
+    type: "ReLU"
+    bottom: "fire5/squeeze1x1"
+    top: "fire5/squeeze1x1"
+}
+
+layer {
+    name: "fire5/expand1x1"
+    type: "Convolution"
+    bottom: "fire5/squeeze1x1"
+    top: "fire5/expand1x1"
+    param {
+        lr_mult: 0.1
+        decay_mult: 0.1  
+    }
+    convolution_param {
+        num_output: 128
+        weight_filler {
+            type: "xavier"    
+        }
+        kernel_size: 1
+        stride: 1  
+    }
+}
+
+layer {
+    name: "fire5/expand1x1_relu"
+    type: "ReLU"
+    bottom: "fire5/expand1x1"
+    top: "fire5/expand1x1"
+}
+
+layer {
+    name: "fire5/expand3x3"
+    type: "Convolution"
+    bottom: "fire5/squeeze1x1"
+    top: "fire5/expand3x3"
+    param {
+        lr_mult: 0.1
+        decay_mult: 0.1  
+    }
+    convolution_param {
+        num_output: 128
+        weight_filler {
+            type: "xavier"    
+        }
+		pad: 1
+        kernel_size: 3
+        stride: 1  
+    }
+}
+
+layer {
+    name: "fire5/expand3x3_relu"
+    type: "ReLU"
+    bottom: "fire5/expand3x3"
+    top: "fire5/expand3x3"
+}
+
+layer {
+    name: "fire5/concat"
+    type: "Concat"
+    bottom: "fire5/expand1x1"
+    bottom: "fire5/expand3x3"
+    top: "fire5/concat"
+}
+
+layer {
+    name: "pool5"
+    type: "Pooling"
+    bottom: "fire5/concat"
+    top: "pool5"
+    pooling_param {
+        pool: MAX
+        kernel_size: 3
+        stride: 2
+    }
+}
+
+# ------- Fire6 Block ------- #
+layer {
+    name: "fire6/squeeze1x1"
+    type: "Convolution"
+    bottom: "pool5"
+    top: "fire6/squeeze1x1"
+    param {
+        lr_mult: 0.1
+        decay_mult: 0.1 
+    }
+    convolution_param {
+        num_output: 48
+        weight_filler {
+            type: "xavier"   
+        }
+        kernel_size: 1
+        stride: 1
+    }
+}
+
+layer {
+    name: "fire6/squeeze1x1_relu"
+    type: "ReLU"
+    bottom: "fire6/squeeze1x1"
+    top: "fire6/squeeze1x1"
+}
+
+layer {
+    name: "fire6/expand1x1"
+    type: "Convolution"
+    bottom: "fire6/squeeze1x1"
+    top: "fire6/expand1x1"
+    param {
+        lr_mult: 0.1
+        decay_mult: 0.1  
+    }
+    convolution_param {
+        num_output: 192
+        weight_filler {
+            type: "xavier"    
+        }
+        kernel_size: 1
+        stride: 1  
+    }
+}
+
+layer {
+    name: "fire6/expand1x1_relu"
+    type: "ReLU"
+    bottom: "fire6/expand1x1"
+    top: "fire6/expand1x1"
+}
+
+layer {
+    name: "fire6/expand3x3"
+    type: "Convolution"
+    bottom: "fire6/squeeze1x1"
+    top: "fire6/expand3x3"
+    param {
+        lr_mult: 0.1
+        decay_mult: 0.1  
+    }
+    convolution_param {
+        num_output: 192
+        weight_filler {
+            type: "xavier"    
+        }
+		pad: 1
+        kernel_size: 3
+        stride: 1  
+    }
+}
+
+layer {
+    name: "fire6/expand3x3_relu"
+    type: "ReLU"
+    bottom: "fire6/expand3x3"
+    top: "fire6/expand3x3"
+}
+
+layer {
+    name: "fire6/concat"
+    type: "Concat"
+    bottom: "fire6/expand1x1"
+    bottom: "fire6/expand3x3"
+    top: "fire6/concat"
+}
+
+# ------- Fire7 Block ------- #
+layer {
+    name: "fire7/squeeze1x1"
+    type: "Convolution"
+    bottom: "fire6/concat"
+    top: "fire7/squeeze1x1"
+    param {
+        lr_mult: 0.1
+        decay_mult: 0.1 
+    }
+    convolution_param {
+        num_output: 48
+        weight_filler {
+            type: "xavier"   
+        }
+        kernel_size: 1
+        stride: 1
+    }
+}
+
+layer {
+    name: "fire7/squeeze1x1_relu"
+    type: "ReLU"
+    bottom: "fire7/squeeze1x1"
+    top: "fire7/squeeze1x1"
+}
+
+layer {
+    name: "fire7/expand1x1"
+    type: "Convolution"
+    bottom: "fire7/squeeze1x1"
+    top: "fire7/expand1x1"
+    param {
+        lr_mult: 0.1
+        decay_mult: 0.1  
+    }
+    convolution_param {
+        num_output: 192
+        weight_filler {
+            type: "xavier"    
+        }
+        kernel_size: 1
+        stride: 1  
+    }
+}
+
+layer {
+    name: "fire7/expand1x1_relu"
+    type: "ReLU"
+    bottom: "fire7/expand1x1"
+    top: "fire7/expand1x1"
+}
+
+layer {
+    name: "fire7/expand3x3"
+    type: "Convolution"
+    bottom: "fire7/squeeze1x1"
+    top: "fire7/expand3x3"
+    param {
+        lr_mult: 0.1
+        decay_mult: 0.1  
+    }
+    convolution_param {
+        num_output: 192
+        weight_filler {
+            type: "xavier"    
+        }
+		pad: 1
+        kernel_size: 3
+        stride: 1  
+    }
+}
+
+layer {
+    name: "fire7/expand3x3_relu"
+    type: "ReLU"
+    bottom: "fire7/expand3x3"
+    top: "fire7/expand3x3"
+}
+
+layer {
+    name: "fire7/concat"
+    type: "Concat"
+    bottom: "fire7/expand1x1"
+    bottom: "fire7/expand3x3"
+    top: "fire7/concat"
+}
+
+# ------- Fire8 Block ------- #
+layer {
+    name: "fire8/squeeze1x1"
+    type: "Convolution"
+    bottom: "fire7/concat"
+    top: "fire8/squeeze1x1"
+    param {
+        lr_mult: 0.1
+        decay_mult: 0.1 
+    }
+    convolution_param {
+        num_output: 64
+        weight_filler {
+            type: "xavier"   
+        }
+        kernel_size: 1
+        stride: 1
+    }
+}
+
+layer {
+    name: "fire8/squeeze1x1_relu"
+    type: "ReLU"
+    bottom: "fire8/squeeze1x1"
+    top: "fire8/squeeze1x1"
+}
+
+layer {
+    name: "fire8/expand1x1"
+    type: "Convolution"
+    bottom: "fire8/squeeze1x1"
+    top: "fire8/expand1x1"
+    param {
+        lr_mult: 0.1
+        decay_mult: 0.1  
+    }
+    convolution_param {
+        num_output: 256
+        weight_filler {
+            type: "xavier"    
+        }
+        kernel_size: 1
+        stride: 1  
+    }
+}
+
+layer {
+    name: "fire8/expand1x1_relu"
+    type: "ReLU"
+    bottom: "fire8/expand1x1"
+    top: "fire8/expand1x1"
+}
+
+layer {
+    name: "fire8/expand3x3"
+    type: "Convolution"
+    bottom: "fire8/squeeze1x1"
+    top: "fire8/expand3x3"
+    param {
+        lr_mult: 0.1
+        decay_mult: 0.1  
+    }
+    convolution_param {
+        num_output: 256
+        weight_filler {
+            type: "xavier"    
+        }
+		pad: 1
+        kernel_size: 3
+        stride: 1  
+    }
+}
+
+layer {
+    name: "fire8/expand3x3_relu"
+    type: "ReLU"
+    bottom: "fire8/expand3x3"
+    top: "fire8/expand3x3"
+}
+
+layer {
+    name: "fire8/concat"
+    type: "Concat"
+    bottom: "fire8/expand1x1"
+    bottom: "fire8/expand3x3"
+    top: "fire8/concat"
+}
+
+# ------- Fire9 Block ------- #
+layer {
+    name: "fire9/squeeze1x1"
+    type: "Convolution"
+    bottom: "fire8/concat"
+    top: "fire9/squeeze1x1"
+    param {
+        lr_mult: 0.1
+        decay_mult: 0.1 
+    }
+    convolution_param {
+        num_output: 64
+        weight_filler {
+            type: "xavier"   
+        }
+        kernel_size: 1
+        stride: 1
+    }
+}
+
+layer {
+    name: "fire9/squeeze1x1_relu"
+    type: "ReLU"
+    bottom: "fire9/squeeze1x1"
+    top: "fire9/squeeze1x1"
+}
+
+layer {
+    name: "fire9/expand1x1"
+    type: "Convolution"
+    bottom: "fire9/squeeze1x1"
+    top: "fire9/expand1x1"
+    param {
+        lr_mult: 0.1
+        decay_mult: 0.1  
+    }
+    convolution_param {
+        num_output: 256
+        weight_filler {
+            type: "xavier"    
+        }
+        kernel_size: 1
+        stride: 1  
+    }
+}
+
+layer {
+    name: "fire9/expand1x1_relu"
+    type: "ReLU"
+    bottom: "fire9/expand1x1"
+    top: "fire9/expand1x1"
+}
+
+layer {
+    name: "fire9/expand3x3"
+    type: "Convolution"
+    bottom: "fire9/squeeze1x1"
+    top: "fire9/expand3x3"
+    param {
+        lr_mult: 0.1
+        decay_mult: 0.1  
+    }
+    convolution_param {
+        num_output: 256
+        weight_filler {
+            type: "xavier"    
+        }
+		pad: 1
+        kernel_size: 3
+        stride: 1  
+    }
+}
+
+layer {
+    name: "fire9/expand3x3_relu"
+    type: "ReLU"
+    bottom: "fire9/expand3x3"
+    top: "fire9/expand3x3"
+}
+
+layer {
+    name: "fire9/concat"
+    type: "Concat"
+    bottom: "fire9/expand1x1"
+    bottom: "fire9/expand3x3"
+    top: "fire9/concat"
+}
+
+# ------- Fire10 Block ------- #
+layer {
+    name: "fire10/squeeze1x1"
+    type: "Convolution"
+    bottom: "fire9/concat"
+    top: "fire10/squeeze1x1"
+    param {
+        lr_mult: 0.1
+        decay_mult: 0.1 
+    }
+    convolution_param {
+        num_output: 96
+        weight_filler {
+            type: "xavier"   
+        }
+        kernel_size: 1
+        stride: 1
+    }
+}
+
+layer {
+    name: "fire10/squeeze1x1_relu"
+    type: "ReLU"
+    bottom: "fire10/squeeze1x1"
+    top: "fire10/squeeze1x1"
+}
+
+layer {
+    name: "fire10/expand1x1"
+    type: "Convolution"
+    bottom: "fire10/squeeze1x1"
+    top: "fire10/expand1x1"
+    param {
+        lr_mult: 0.1
+        decay_mult: 0.1  
+    }
+    convolution_param {
+        num_output: 384
+        weight_filler {
+            type: "xavier"    
+        }
+        kernel_size: 1
+        stride: 1  
+    }
+}
+
+layer {
+    name: "fire10/expand1x1_relu"
+    type: "ReLU"
+    bottom: "fire10/expand1x1"
+    top: "fire10/expand1x1"
+}
+
+layer {
+    name: "fire10/expand3x3"
+    type: "Convolution"
+    bottom: "fire10/squeeze1x1"
+    top: "fire10/expand3x3"
+    param {
+        lr_mult: 0.1
+        decay_mult: 0.1  
+    }
+    convolution_param {
+        num_output: 384
+        weight_filler {
+            type: "xavier"    
+        }
+		pad: 1
+        kernel_size: 3
+        stride: 1  
+    }
+}
+
+layer {
+    name: "fire10/expand3x3_relu"
+    type: "ReLU"
+    bottom: "fire10/expand3x3"
+    top: "fire10/expand3x3"
+}
+
+layer {
+    name: "fire10/concat"
+    type: "Concat"
+    bottom: "fire10/expand1x1"
+    bottom: "fire10/expand3x3"
+    top: "fire10/concat"
+}
+
+# ------- Fire11 Block ------- #
+layer {
+    name: "fire11/squeeze1x1"
+    type: "Convolution"
+    bottom: "fire10/concat"
+    top: "fire11/squeeze1x1"
+    param {
+        lr_mult: 0.1
+        decay_mult: 0.1 
+    }
+    convolution_param {
+        num_output: 96
+        weight_filler {
+            type: "xavier"   
+        }
+        kernel_size: 1
+        stride: 1
+    }
+}
+
+layer {
+    name: "fire11/squeeze1x1_relu"
+    type: "ReLU"
+    bottom: "fire11/squeeze1x1"
+    top: "fire11/squeeze1x1"
+}
+
+layer {
+    name: "fire11/expand1x1"
+    type: "Convolution"
+    bottom: "fire11/squeeze1x1"
+    top: "fire11/expand1x1"
+    param {
+        lr_mult: 0.1
+        decay_mult: 0.1  
+    }
+    convolution_param {
+        num_output: 384
+        weight_filler {
+            type: "xavier"    
+        }
+        kernel_size: 1
+        stride: 1  
+    }
+}
+
+layer {
+    name: "fire11/expand1x1_relu"
+    type: "ReLU"
+    bottom: "fire11/expand1x1"
+    top: "fire11/expand1x1"
+}
+
+layer {
+    name: "fire11/expand3x3"
+    type: "Convolution"
+    bottom: "fire11/squeeze1x1"
+    top: "fire11/expand3x3"
+    param {
+        lr_mult: 0.1
+        decay_mult: 0.1  
+    }
+    convolution_param {
+        num_output: 384
+        weight_filler {
+            type: "xavier"    
+        }
+		pad: 1
+        kernel_size: 3
+        stride: 1  
+    }
+}
+
+layer {
+    name: "fire11/expand3x3_relu"
+    type: "ReLU"
+    bottom: "fire11/expand3x3"
+    top: "fire11/expand3x3"
+}
+
+layer {
+    name: "fire11/concat"
+    type: "Concat"
+    bottom: "fire11/expand1x1"
+    bottom: "fire11/expand3x3"
+    top: "fire11/concat"
+}
+
+layer {
+    name: "drop11"
+    type: "Dropout"
+    bottom: "fire11/concat"
+    top: "drop11"
+    dropout_param {
+        dropout_ratio: 1.0
+    }
+}
+
+layer {
+    name: "conv12"
+    type: "Convolution"
+    bottom: "drop11"
+    top: "conv12"
+    param {
+        lr_mult: 0.1
+        decay_mult: 0.1  
+    }
+    convolution_param {
+        num_output: 72
+        weight_filler {
+            type: "xavier"    
+        }
+		pad: 1
+        kernel_size: 3
+        stride: 1  
+    }
+}
+
+layer {
+	name: "Slice"
+	type: "Slice"
+	bottom: "conv12"
+	top: "pred_class_probs"
+	top: "pred_conf"
+	top: "pred_box_delta"
+	slice_param {
+		axis: 1
+		slice_point: 27
+		slice_point: 36
+	}
+}

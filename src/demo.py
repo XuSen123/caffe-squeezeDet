@@ -40,7 +40,9 @@ def demo(net, image_name):
     
     det_boxes, det_probs, det_class = im_detect(net, im)
     
-    pdb.set_trace()
+    print('det_boxes: ', det_boxes)
+    print('det_probs: ', det_probs)
+    print('det_class: ', det_class)
 
 if __name__ == '__main__':
     args = parse_args()

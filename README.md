@@ -9,6 +9,6 @@ The convolution operation is different in tensorflow and caffe, especially the p
 But for kernel size 3 x 3 or 1 x 1 and stride step 1 with padding SAME in tensorflow, we directly choose convolution param with pad = 1, kernel size = 3 and stride = 1
 ### Demo
 ``` python
-cd $caffe-squeezeDet
+cd caffe-squeezeDet
 python ./src/demo.py
 ```
